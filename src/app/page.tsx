@@ -370,95 +370,65 @@ export default function Home() {
     busy.current = true;
     const winner = lunchSelector.choose(eligible);
 
-    const step = 254,
-      tileWidth = 240,
-      width = viewport.current.clientWidth;
-    const start = position.current;
-    const center = Math.floor((width / 2 - start) / step);
-    const profile = createSpinProfile();
-    const target = center + profile.tiles;
-    const end = width / 2 - tileWidth * stopFraction() - target * step;
-    // Keep visible cards at permanent world coordinates. Generate new cards
-    // offscreen to the right; the track only travels left, without a reset.
-    const rightEdge = Math.ceil((width - start) / step) + 1;
-    const items = reel.filter(
-      (item) =>
-        item.id >= center - Math.ceil(width / step) - 2 && item.id <= rightEdge,
-    );
-    const last = Math.max(...items.map((item) => item.id));
-    const recent: Food[] = [];
-    for (let id = last + 1; id <= target + 4; id++) {
-      const alternatives = eligible.filter(
-        (food) =>
-          !recent.includes(food) &&
-          (lunchSelector.probabilities.get(food) ?? 0) > 0,
-      );
-      const food =
-        id === target
-          ? winner
-          : lunchSelector.choose(alternatives.length ? alternatives : eligible);
-      items.push({ id, food });
-      recent.push(food);
-      if (recent.length > 8) recent.shift();
-    }
-    flushSync(() => {
-      setReel(items);
-      setSpinning(true);
-      setMoving(true);
-      setResult(null);
-    });
-    audio.current?.play("csgo_ui_crate_open");
-    const reduced = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
-    const duration = reduced ? 150 : profile.durationMs;
-    const started = performance.now();
-    let renderedStart = visibleStart;
-    let lastCell = Math.floor((start - width / 2) / step);
-    const animate = (now: number) => {
-      const progress = Math.max(0, Math.min(1, (now - started) / duration));
-      const next =
-        start + (end - start) * spinProgress(progress, profile.friction);
-      position.current = next;
-      // Only mount a viewport-sized strip, with 4 cards of overscan on either side.
-      // Absolute slot coordinates and transform never reset when the window advances.
-      const firstVisible = Math.max(0, Math.floor(-next / step));
-      if (firstVisible - renderedStart >= 4 || firstVisible < renderedStart) {
-        renderedStart = Math.max(0, firstVisible - 2);
-        setVisibleStart(renderedStart);
-      }
-      if (track.current)
-        track.current.style.transform = `translate3d(${next}px,0,0)`;
-      // Tick when a card actually crosses the pointer, including on slow devices.
-      const cell = Math.floor((next - width / 2) / step);
-      if (cell !== lastCell) {
-        audio.current?.play("csgo_ui_crate_item_scroll");
-        lastCell = cell;
-      }
-      if (progress < 1) {
-        frame.current = requestAnimationFrame(animate);
-        return;
-      }
-      recordSpin(winner);
-      busy.current = false;
-      setSpinning(false);
-      setMoving(false);
-      setResult(winner);
-      setRevealed(true);
-      audio.current?.play(
-        (
-          [
-            "item_reveal3_rare",
-            "item_reveal4_mythical",
-            "item_reveal5_legendary",
-            "item_reveal6_ancient",
-            "item_reveal6_ancient",
-          ] as const
-        )[winner.rarity],
-      );
-    };
-    frame.current = requestAnimationFrame(animate);
+  const step=254,tileWidth=240,width=viewport.current.clientWidth;
+  const start=position.current;
+  const center=Math.floor((width/2-start)/step);
+  const reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const profile=createSpinProfile(Math.random,reducedMotion);
+  const target=center+profile.tiles;
+  const end=width/2-tileWidth*stopFraction()-target*step;
+  // Keep visible cards at permanent world coordinates. Generate new cards
+  // offscreen to the right; the track only travels left, without a reset.
+  const rightEdge=Math.ceil((width-start)/step)+1;
+  const items=reel.filter(item=>item.id>=center-Math.ceil(width/step)-2&&item.id<=rightEdge);
+  const last=Math.max(...items.map(item=>item.id));
+  const recent:Food[]=[];
+  for(let id=last+1;id<=target+4;id++){
+   const alternatives=eligible.filter(food=>!recent.includes(food)&&(lunchSelector.probabilities.get(food)??0)>0);
+   const food=id===target?winner:lunchSelector.choose(alternatives.length?alternatives:eligible);
+   items.push({id,food});recent.push(food);if(recent.length>8)recent.shift();
   }
+  flushSync(()=>{setReel(items);setSpinning(true);setMoving(true);setResult(null)});
+  audio.current?.play('csgo_ui_crate_open');
+  const duration=profile.durationMs;
+  const started=performance.now();
+  let renderedStart=visibleStart;
+  let lastCell=Math.floor((start-width/2)/step);
+  const animate=(now:number)=>{
+   const progress=Math.max(0,Math.min(1,(now-started)/duration));
+   const next=start+(end-start)*spinProgress(progress,profile.friction);
+   position.current=next;
+   // Only mount a viewport-sized strip, with 4 cards of overscan on either side.
+   // Absolute slot coordinates and transform never reset when the window advances.
+   const firstVisible=Math.max(0,Math.floor(-next/step));
+   if(firstVisible-renderedStart>=4||firstVisible<renderedStart){renderedStart=Math.max(0,firstVisible-2);setVisibleStart(renderedStart)}
+   if(track.current)track.current.style.transform=`translate3d(${next}px,0,0)`;
+   // Tick when a card actually crosses the pointer, including on slow devices.
+   const cell=Math.floor((next-width/2)/step);
+   if(cell!==lastCell){audio.current?.play('csgo_ui_crate_item_scroll');lastCell=cell}
+   if(progress<1){frame.current=requestAnimationFrame(animate);return}
+   recordSpin(winner);
+   busy.current=false;setSpinning(false);setMoving(false);setResult(winner);setRevealed(true);
+   audio.current?.play((['item_reveal3_rare','item_reveal4_mythical','item_reveal5_legendary','item_reveal6_ancient','item_reveal6_ancient'] as const)[winner.rarity]);
+  };
+  frame.current=requestAnimationFrame(animate);
+ }
+
+ return <div className="site-shell">
+ <header><a href={`${basePath}/`} className="brand">
+  <picture>
+   <source media="(max-width: 900px)" srcSet={`${basePath}/brand/icon-cs-v2.webp`}/>
+   <img className="brand-logo" src={`${basePath}/brand/logo-cs-v2.webp`} width={180} height={60} alt="Trưa Nay Ăn Gì" fetchPriority="high"/>
+  </picture>
+ </a><div className="header-actions"><PreferencesPanel preferences={preferences} language={language} disabled={spinning}/><button className="language-button" onClick={()=>changeLanguage(language==='vi'?'en':'vi')} aria-label={t.language}>{language==='vi'?'EN':'VI'}</button><button className="sound-button" onClick={()=>{audio.current?.setMuted(sound);setSound(!sound)}} aria-label={sound?t.turnSoundOff:t.turnSoundOn}>{sound?<Volume2 size={18}/>:<VolumeX size={18}/>}<span>{sound?t.soundOn:t.soundOff}</span></button><a className="social-button facebook-button" href="https://www.facebook.com/share/g/19S49GH46A/" target="_blank" rel="noreferrer" aria-label={language==='vi'?'Tham gia nhóm Facebook Trưa Nay Ăn Gì':'Join the Trưa Nay Ăn Gì Facebook group'}><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M14.2 21v-8h2.7l.4-3.1h-3.1v-2c0-.9.3-1.5 1.6-1.5h1.7V3.6c-.3 0-1.3-.1-2.5-.1-2.5 0-4.2 1.5-4.2 4.3v2.1H8V13h2.8v8h3.4Z"/></svg><span>Facebook</span></a><a className="github-button" href="https://github.com/truanayangi-com/truanayangi" target="_blank" rel="noreferrer" aria-label={t.github}><svg className="github-mark" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2C6.48 2 2 6.58 2 12.23c0 4.52 2.87 8.35 6.84 9.71.5.1.68-.22.68-.49v-1.91c-2.78.62-3.37-1.21-3.37-1.21-.45-1.18-1.11-1.49-1.11-1.49-.91-.64.07-.62.07-.62 1 .08 1.53 1.06 1.53 1.06.9 1.57 2.35 1.12 2.92.86.09-.66.35-1.12.64-1.37-2.22-.26-4.56-1.14-4.56-5.06 0-1.12.39-2.03 1.03-2.75-.1-.26-.45-1.3.1-2.71 0 0 .84-.28 2.75 1.05A9.3 9.3 0 0 1 12 6.96a9.3 9.3 0 0 1 2.5.35c1.91-1.33 2.75-1.05 2.75-1.05.55 1.41.2 2.45.1 2.71.64.72 1.03 1.63 1.03 2.75 0 3.93-2.34 4.79-4.57 5.05.36.32.68.94.68 1.89v2.8c0 .27.18.59.69.49A10.25 10.25 0 0 0 22 12.23C22 6.58 17.52 2 12 2Z"/></svg><span className="github-label">GitHub</span></a></div></header>
+ <main><>{cookieError&&<p role="status" className="preferences-message">{cookieError}</p>}<div className="intro"><h1>{t.title}</h1></div>
+ {!eligible.length&&<p className="preferences-message">{language==='vi'?'Pool không có món phù hợp. Tắt bộ lọc chay hoặc thêm món.':'No matching dishes. Turn off the vegetarian filter or add dishes.'}</p>}
+ {counterEnabled&&<p className="local-counter" title={language==='vi'?'Lượt mở trên trình duyệt này, lưu bằng cookie':'Spins on this browser, stored in cookies'}>{language==='vi'?'Bạn đã mở':'You have opened'} <strong>{localSpins===null?'—':new Intl.NumberFormat(language==='vi'?'vi-VN':'en-US').format(localSpins)}</strong> {language==='vi'?'hòm trên trình duyệt này':'cases on this browser'}</p>}
+ {result&&!spinning&&<p className="local-counter">{language==='vi'?'Lựa chọn gần nhất: ':'Last choice: '}<strong>{foodName(result,language)}</strong></p>}
+ <section className="case-panel" aria-label={t.caseLabel}>
+ <div className={`reel-window ${moving?'is-spinning':''} `} ref={viewport}><div className="selector-line"/><div className="reel-track" ref={attachTrack}>{reel.filter(({id})=>id>=visibleStart&&id<visibleStart+12).map(({food,id})=><Card key={id} food={food} language={language} slot={id}/>)}</div><div className="reel-fade left"/><div className="reel-fade right"/></div></section>
+ <div className="control-bar"><div className="filters"><div className="budget"><label id="budget-label">{t.spend}</label><Select value={budget} onValueChange={v=>setBudget(v??'50')} disabled={spinning}><SelectTrigger aria-labelledby="budget-label"><SelectValue>{budget==='custom'?t.custom:priceLabel(budget,language)}</SelectValue></SelectTrigger><SelectContent>{['35','50','75','100','150'].map(v=><SelectItem key={v} value={v}>{priceLabel(v,language)}</SelectItem>)}<SelectItem value="custom">{t.custom}</SelectItem></SelectContent></Select>{budget==='custom'&&<div className="custom-spend"><input aria-label={t.customSpend} aria-invalid={!validTarget} type="number" inputMode="numeric" min="30" max="180" step="1" value={custom} disabled={spinning} onChange={e=>setCustom(e.target.value)}/><span>{t.thousandPerMeal}</span></div>}{!validTarget&&<small className="spend-note" role="alert">{t.spendError}</small>}{validTarget&&eligible.length>0&&(veg||Math.abs(filteredMean-target)>.5)&&<small className="spend-note">{t.vegetarianPool} {priceLabel(Math.round(filteredMean),language,true)} / {language==='vi'?'bữa':'meal'}</small>}</div><label className="veg"><Switch checked={veg} onCheckedChange={setVeg} disabled={spinning} aria-label={t.vegetarianOnly}/><span><Leaf size={15}/> {t.vegetarian}</span></label></div><div className="open-wrap"><button className="open-button" disabled={spinning||!validTarget||!eligible.length} onClick={open}>{spinning?<AudioLines size={22}/>:<Sparkles size={21}/>} {spinning?t.opening:result?t.openAgain:t.open} <span>↗</span></button></div></div>
+ <Dialog open={revealed} onOpenChange={setRevealed}><DialogContent className="winner-dialog" showCloseButton={false}>{result&&<><span className="winner-label">{t.newItem}</span><DialogTitle className="winner-title">{foodName(result,language)}</DialogTitle><DialogDescription className="winner-description">{t.referencePrice} · {priceLabel(result.price,language,true)} {t.perPerson}</DialogDescription><div className="winner-art" style={{'--rarity':colors[result.rarity]} as React.CSSProperties}><FoodImage food={result} language={language}/></div><div className="winner-actions"><a className="find-button" href={`https://www.google.com/maps/search/${encodeURIComponent(result.name+' '+t.nearby)}`} target="_blank" rel="noreferrer">{t.find} <ArrowUpRight size={16}/></a><a className="grabfood-button" href={`https://food.grab.com/vn/vi/restaurants?${new URLSearchParams({search:result.name,'support-deeplink':'true',searchParameter:result.name})}`} target="_blank" rel="noreferrer" aria-label={language==='vi'?`Đặt ${result.name} qua GrabFood`:`Find ${foodName(result,language)} on GrabFood`}><span className="grabfood-label">{language==='vi'?'Đặt qua':'Order on'} <strong>GrabFood</strong></span><ArrowUpRight size={17} aria-hidden="true"/></a><button onClick={()=>setRevealed(false)}>{t.continue}</button></div></>}</DialogContent></Dialog>
 
   return (
     <div className="site-shell">
